@@ -149,5 +149,51 @@ FUNCTION dostepnewycieczki(par_kraj    WYCIECZKI.KRAJ%TYPE, data_od DATE,
 
 --5.a/DodajRezerwacje(id_wycieczki, id_osoby), procedura powinna kontrolować czy wycieczka jeszcze się nie odbyła, i czy sa wolne miejsca
 
---5.b/
+create or replace procedure DodajRezerwacja(par_id_wycieczki integer, par_id_osoby integer)
+as
+    jest integer;
+
+    begin
+        select count(*) into jest
+        from OSOBY where ID_OSOBY = par_id_osoby;
+        if jest = 0 then
+            raise_application_error(-20000, 'Nie ma takiej osoby');
+        end if;
+
+        select count(*) into jest
+        from WYCIECZKI where ID_WYCIECZKI = par_id_wycieczki;
+        if jest = 0 then
+            raise_application_error(-20004, 'Nie ma takiej wycieczki');
+        end if;
+
+        select sum(wolne_miejsca) into jest from (SELECT w.LICZBA_MIEJSC - count(r.NR_REZERWACJI)  as wolne_miejsca
+            FROM WYCIECZKI w
+            JOIN REZERWACJE r on w.ID_WYCIECZKI = r.ID_WYCIECZKI
+            where w.ID_WYCIECZKI = par_id_wycieczki
+            GROUP by w.LICZBA_MIEJSC);
+
+        if jest - 1 < 0 then
+             raise_application_error(-20006, 'Brak wolnych miejsc na tę wycieczkę');
+        end if;
+
+        select count(*) into jest
+        from rezerwacje r
+        where r.ID_WYCIECZKI = par_id_wycieczki
+        and r.ID_OSOBY = par_id_osoby;
+        if jest > 0
+        then
+            raise_application_error(-20007, 'Rezerwacja juz jest zrobiona');
+        end if;
+
+       insert into REZERWACJE (id_wycieczki, id_osoby, STATUS)
+       values (par_id_wycieczki, par_id_osoby, 'N');
+    end;
+
+begin dodajrezerwacja(25,45);
+end;
+
+--5.b/ZmienStatusRezerwacji(nr_rezerwacji, status), procedura kontrolować czy możliwa jest zmiana statusu
+
+
+
 --5.c/
